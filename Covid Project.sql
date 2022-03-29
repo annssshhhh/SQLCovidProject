@@ -1,3 +1,6 @@
+--creating and using dedicated database
+create database Covid Project
+use [Covid Project]
 --to view tables
 select*
 from [Covid Project]..deaths
@@ -19,7 +22,7 @@ where location like 'ind%'
 order by 1,2
 
 --finding CaseRate
-select location, date, total_cases,population, (total_cases/population)*100 as CaseRate
+select location, date, total_cases, population, (total_cases/population)*100 as CaseRate
 from [Covid Project]..deaths
 --where location like 'india'
 order by 1,2
@@ -36,8 +39,8 @@ from [Covid Project]..deaths
 group by location, population
 order by 2 desc
 
---finding max DeathCount
---casting total_deaths as int
+/*finding max DeathCount
+casting total_deaths as int*/
 select location, max(cast(total_deaths as int))as DeathCount
 from [Covid Project]..deaths
 --eliminating world & continental segregations (nulls)
@@ -45,24 +48,54 @@ where continent is not null
 group by location
 order by 2 desc
 
---continentwise breakdown
+/*international cases breakdown
+also creating views to import to tableau*/
+create view InternationalCasesBreakdown as
+select location, population, max(total_cases) as Cases, max((total_cases/population))*100 as CaseRate
+from [Covid Project]..deaths
+where continent is not null
+group by location, population
+
+select*
+from InternationalCasesBreakdown
+order by CaseRate desc
+
+--datewise international cases date breakdown
+create view DatewiseInternationalCasesBreakdown as
+select date, location, population, max(total_cases) as Cases, max((total_cases/population))*100 as CaseRate
+from [Covid Project]..deaths
+where continent is not null
+group by date, location, population
+
+select*
+from DatewiseInternationalCasesBreakdown
+order by date
+
+--continental breakdown
+create view ContinentalBreakdown as
 select continent, sum(cast(total_deaths as int))as DeathCount
 from [Covid Project]..deaths
 where continent is not null
 group by continent
+
+select*
+from ContinentalBreakdown
 order by 2 desc
 
 --global breakdown
+create view GlobalBreakdown as
 select sum(total_cases)as CaseCount, sum(cast(total_deaths as int))as DeathCount, (sum(cast(total_deaths as int))/(sum(total_cases))*100) as DeathRate
 from [Covid Project]..deaths
 where continent is not null
 
+select*
+from GlobalBreakdown
 
---viewing total population vs vaccinations
---by joining deaths & vaccinations table
+/*viewing total population vs vaccinations
+by joining deaths & vaccinations table*/
 select dea.continent, dea.location, dea.population, dea.date, vax.new_vaccinations
-from [Covid Project]..deaths dea						--alias dea for death
-join [Covid Project]..vaccinations vax					--alias vax for vaccination
+from [Covid Project]..deaths dea								--alias dea for death
+join [Covid Project]..vaccinations vax								--alias vax for vaccination
 	on dea.location=vax.location
 	and dea.date=vax.date
 where dea.continent is not null
@@ -102,8 +135,8 @@ select*,(CumulativeVaccinations/Population)*100 as VaxRate
 from CumulativeVaxTable
 --where Location like 'india'
 
---using temp table (stored in master database)
---drop table if exists, incase alterations to the table need be made
+/*using temp table
+drop table if exists, incase alterations to the table need be made*/
 drop table if exists CumulativeVaccinationTable
 create table CumulativeVaccinationTable(
 Continent nvarchar(255),
@@ -124,14 +157,9 @@ join [Covid Project]..vaccinations vax
 	and dea.date=vax.date
 where dea.continent is not null
 
+create view CumVaxRate as 
 select*,(CumulativeVaccinations/Population)*100 as VaxRate
 from CumulativeVaccinationTable
 
---creating view
-create view CumVaxRate as
-select*,(CumulativeVaccinations/Population)*100 as VaxRate
-from CumulativeVaccinationTable
-
---viewing view
 select*
 from CumVaxRate
